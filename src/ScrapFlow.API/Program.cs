@@ -15,8 +15,6 @@ var builder = WebApplication.CreateBuilder(args);
 // ===== DATABASE =====
 builder.Services.AddDbContext<ScrapFlowDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
-        // ?? "Host=localhost;Port=5432;Database=scrapflow;Username=postgres;Password=postgres"));
-
 // ===== IDENTITY =====
 builder.Services.AddIdentity<AppUser, IdentityRole>(options =>
     {
