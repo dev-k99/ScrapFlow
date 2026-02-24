@@ -1,0 +1,13 @@
+C:\Users\kwanele\Documents\ScrapyardApp\src\ScrapFlow.Domain\bin\Debug\net8.0\ScrapFlow.Domain.deps.json
+C:\Users\kwanele\Documents\ScrapyardApp\src\ScrapFlow.Domain\bin\Debug\net8.0\ScrapFlow.Domain.dll
+C:\Users\kwanele\Documents\ScrapyardApp\src\ScrapFlow.Domain\bin\Debug\net8.0\ScrapFlow.Domain.pdb
+C:\Users\kwanele\Documents\ScrapyardApp\src\ScrapFlow.Domain\obj\Debug\net8.0\ScrapFlow.Domain.csproj.AssemblyReference.cache
+C:\Users\kwanele\Documents\ScrapyardApp\src\ScrapFlow.Domain\obj\Debug\net8.0\ScrapFlow.Domain.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\kwanele\Documents\ScrapyardApp\src\ScrapFlow.Domain\obj\Debug\net8.0\ScrapFlow.Domain.AssemblyInfoInputs.cache
+C:\Users\kwanele\Documents\ScrapyardApp\src\ScrapFlow.Domain\obj\Debug\net8.0\ScrapFlow.Domain.AssemblyInfo.cs
+C:\Users\kwanele\Documents\ScrapyardApp\src\ScrapFlow.Domain\obj\Debug\net8.0\ScrapFlow.Domain.csproj.CoreCompileInputs.cache
+C:\Users\kwanele\Documents\ScrapyardApp\src\ScrapFlow.Domain\obj\Debug\net8.0\ScrapFlow.Domain.sourcelink.json
+C:\Users\kwanele\Documents\ScrapyardApp\src\ScrapFlow.Domain\obj\Debug\net8.0\ScrapFlow.Domain.dll
+C:\Users\kwanele\Documents\ScrapyardApp\src\ScrapFlow.Domain\obj\Debug\net8.0\refint\ScrapFlow.Domain.dll
+C:\Users\kwanele\Documents\ScrapyardApp\src\ScrapFlow.Domain\obj\Debug\net8.0\ScrapFlow.Domain.pdb
+C:\Users\kwanele\Documents\ScrapyardApp\src\ScrapFlow.Domain\obj\Debug\net8.0\ref\ScrapFlow.Domain.dll
