@@ -42,7 +42,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("register")]
-    // [Authorize(Roles = "Owner,Manager")]  // Uncomment when auth is enforced
+    // [Authorize(Roles = "Owner,Manager")]  
     public async Task<ActionResult<AuthResponseDto>> Register(RegisterDto dto)
     {
         var existingUser = await _userManager.FindByEmailAsync(dto.Email);
