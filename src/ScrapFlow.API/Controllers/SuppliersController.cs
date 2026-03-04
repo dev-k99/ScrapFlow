@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ScrapFlow.Application.DTOs;
@@ -9,6 +10,7 @@ namespace ScrapFlow.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class SuppliersController : ControllerBase
 {
     private readonly ScrapFlowDbContext _db;
@@ -34,8 +36,8 @@ public class SuppliersController : ControllerBase
                 ContactNumber = s.ContactNumber, Email = s.Email, VehicleRegistration = s.VehicleRegistration,
                 BankName = s.BankName, IsWastePicker = s.IsWastePicker, IsVerified = s.IsVerified,
                 TotalTickets = tickets.Count,
-                TotalWeight = tickets.Sum(t => t.NetWeight ?? 0),
-                TotalValue = tickets.Sum(t => t.TotalPrice)
+                TotalWeight  = tickets.Sum(t => t.NetWeight ?? 0),
+                TotalValue   = tickets.Sum(t => t.TotalPrice)
             });
         }
         return Ok(dtos);
@@ -54,8 +56,8 @@ public class SuppliersController : ControllerBase
             ContactNumber = s.ContactNumber, Email = s.Email, VehicleRegistration = s.VehicleRegistration,
             BankName = s.BankName, IsWastePicker = s.IsWastePicker, IsVerified = s.IsVerified,
             TotalTickets = tickets.Count,
-            TotalWeight = tickets.Sum(t => t.NetWeight ?? 0),
-            TotalValue = tickets.Sum(t => t.TotalPrice)
+            TotalWeight  = tickets.Sum(t => t.NetWeight ?? 0),
+            TotalValue   = tickets.Sum(t => t.TotalPrice)
         });
     }
 
@@ -77,5 +79,48 @@ public class SuppliersController : ControllerBase
         {
             Id = supplier.Id, FullName = supplier.FullName, IdNumber = supplier.IdNumber
         });
+    }
+
+    [HttpPut("{id}")]
+    public async Task<ActionResult<SupplierDto>> Update(Guid id, UpdateSupplierDto dto)
+    {
+        var s = await _db.Suppliers.FindAsync(id);
+        if (s == null) return NotFound();
+
+        s.FullName           = dto.FullName;
+        s.ContactNumber      = dto.ContactNumber;
+        s.Email              = dto.Email;
+        s.Address            = dto.Address;
+        s.VehicleRegistration = dto.VehicleRegistration;
+        s.BankName           = dto.BankName;
+        s.AccountNumber      = dto.AccountNumber;
+        s.BranchCode         = dto.BranchCode;
+        s.IsWastePicker      = dto.IsWastePicker;
+        s.WastePickerArea    = dto.WastePickerArea;
+
+        await _db.SaveChangesAsync();
+
+        var tickets = await _db.InboundTickets.Where(t => t.SupplierId == s.Id && t.Status == TicketStatus.Completed).ToListAsync();
+        return Ok(new SupplierDto
+        {
+            Id = s.Id, FullName = s.FullName, IdNumber = s.IdNumber, IdType = s.IdType.ToString(),
+            ContactNumber = s.ContactNumber, Email = s.Email, VehicleRegistration = s.VehicleRegistration,
+            BankName = s.BankName, IsWastePicker = s.IsWastePicker, IsVerified = s.IsVerified,
+            TotalTickets = tickets.Count,
+            TotalWeight  = tickets.Sum(t => t.NetWeight ?? 0),
+            TotalValue   = tickets.Sum(t => t.TotalPrice)
+        });
+    }
+
+    [HttpPost("{id}/verify")]
+    [Authorize(Roles = "Owner,Manager")]
+    public async Task<ActionResult> Verify(Guid id)
+    {
+        var s = await _db.Suppliers.FindAsync(id);
+        if (s == null) return NotFound();
+
+        s.IsVerified = true;
+        await _db.SaveChangesAsync();
+        return Ok(new { message = "Supplier verified successfully" });
     }
 }
