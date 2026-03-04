@@ -10,8 +10,13 @@ public interface ITicketService
     Task<InboundTicketResponseDto> RecordTareWeightAsync(Guid ticketId, RecordTareWeightDto dto, string userId);
     Task<InboundTicketResponseDto> RecordPaymentAsync(Guid ticketId, RecordPaymentDto dto, string userId);
     Task<InboundTicketResponseDto> CompleteTicketAsync(Guid ticketId, CompleteTicketDto dto, string userId);
+    Task<InboundTicketResponseDto> CancelTicketAsync(Guid ticketId, string userId);
+    Task AddPhotoAsync(Guid ticketId, ScrapFlow.Domain.Enums.PhotoType photoType, string filePath, string userId);
     Task<InboundTicketResponseDto?> GetTicketAsync(Guid ticketId);
-    Task<List<InboundTicketResponseDto>> GetTicketsAsync(Guid? siteId = null, string? status = null, int page = 1, int pageSize = 20);
+    Task<PagedResult<InboundTicketResponseDto>> GetTicketsAsync(
+        Guid? siteId = null, string? status = null, string? supplierSearch = null,
+        DateTime? dateFrom = null, DateTime? dateTo = null,
+        int page = 1, int pageSize = 20);
 }
 
 public interface IMaterialService
