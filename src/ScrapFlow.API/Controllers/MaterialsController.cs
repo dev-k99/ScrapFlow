@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ScrapFlow.Application.DTOs;
@@ -8,6 +9,7 @@ namespace ScrapFlow.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class MaterialsController : ControllerBase
 {
     private readonly ScrapFlowDbContext _db;
@@ -28,22 +30,22 @@ public class MaterialsController : ControllerBase
         return Ok(grades.Select(g =>
         {
             var todayPrice = g.DailyPrices.FirstOrDefault();
-            var buy = todayPrice?.BuyPricePerTon ?? g.DefaultBuyPrice;
-            var sell = todayPrice?.SellPricePerTon ?? g.DefaultSellPrice;
+            var buy    = todayPrice?.BuyPricePerTon  ?? g.DefaultBuyPrice;
+            var sell   = todayPrice?.SellPricePerTon ?? g.DefaultSellPrice;
             var margin = sell > 0 ? Math.Round((sell - buy) / sell * 100, 2) : 0;
 
             return new MaterialGradeDto
             {
-                Id = g.Id,
-                Code = g.Code,
-                Name = g.Name,
-                Category = g.Category.Name,
-                DefaultBuyPrice = g.DefaultBuyPrice,
+                Id               = g.Id,
+                Code             = g.Code,
+                Name             = g.Name,
+                Category         = g.Category.Name,
+                DefaultBuyPrice  = g.DefaultBuyPrice,
                 DefaultSellPrice = g.DefaultSellPrice,
-                TodayBuyPrice = buy,
-                TodaySellPrice = sell,
-                MarginPercent = margin,
-                Unit = g.Unit.ToString()
+                TodayBuyPrice    = buy,
+                TodaySellPrice   = sell,
+                MarginPercent    = margin,
+                Unit             = g.Unit.ToString()
             };
         }));
     }
@@ -62,7 +64,29 @@ public class MaterialsController : ControllerBase
         });
     }
 
+    [HttpGet("margins")]
+    public async Task<ActionResult<List<MarginByGradeDto>>> GetMargins()
+    {
+        var today = DateTime.UtcNow.Date;
+        var grades = await _db.MaterialGrades
+            .Include(g => g.DailyPrices.Where(dp => dp.EffectiveDate == today))
+            .ToListAsync();
+
+        var result = grades.Select(g =>
+        {
+            var dp     = g.DailyPrices.FirstOrDefault();
+            var buy    = dp?.BuyPricePerTon  ?? g.DefaultBuyPrice;
+            var sell   = dp?.SellPricePerTon ?? g.DefaultSellPrice;
+            var margin = sell > 0 ? Math.Round((sell - buy) / sell * 100, 2) : 0;
+            return new MarginByGradeDto(g.Code, buy, sell, margin);
+        }).ToList();
+
+        return Ok(result);
+    }
+
+    /// <summary>Update today's buy/sell prices. Restricted to Owner and Manager roles.</summary>
     [HttpPost("daily-prices")]
+    [Authorize(Roles = "Owner,Manager")]
     public async Task<ActionResult> UpdateDailyPrices(List<UpdateDailyPriceDto> prices)
     {
         var today = DateTime.UtcNow.Date;
@@ -73,19 +97,19 @@ public class MaterialsController : ControllerBase
 
             if (existing != null)
             {
-                existing.BuyPricePerTon = p.BuyPricePerTon;
+                existing.BuyPricePerTon  = p.BuyPricePerTon;
                 existing.SellPricePerTon = p.SellPricePerTon;
-                existing.Notes = p.Notes;
+                existing.Notes           = p.Notes;
             }
             else
             {
                 _db.DailyPrices.Add(new DailyPrice
                 {
-                    MaterialGradeId = p.MaterialGradeId,
-                    EffectiveDate = today,
-                    BuyPricePerTon = p.BuyPricePerTon,
-                    SellPricePerTon = p.SellPricePerTon,
-                    Notes = p.Notes
+                    MaterialGradeId  = p.MaterialGradeId,
+                    EffectiveDate    = today,
+                    BuyPricePerTon   = p.BuyPricePerTon,
+                    SellPricePerTon  = p.SellPricePerTon,
+                    Notes            = p.Notes
                 });
             }
         }
