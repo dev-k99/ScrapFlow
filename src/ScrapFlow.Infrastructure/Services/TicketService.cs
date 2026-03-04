@@ -259,7 +259,10 @@ public class TicketService : ITicketService
         return MapToDto(ticket);
     }
 
-    public async Task<List<InboundTicketResponseDto>> GetTicketsAsync(Guid? siteId = null, string? status = null, int page = 1, int pageSize = 20)
+    public async Task<PagedResult<InboundTicketResponseDto>> GetTicketsAsync(
+        Guid? siteId = null, string? status = null, string? supplierSearch = null,
+        DateTime? dateFrom = null, DateTime? dateTo = null,
+        int page = 1, int pageSize = 20)
     {
         var query = _db.InboundTickets
             .Include(t => t.Supplier)
@@ -272,6 +275,14 @@ public class TicketService : ITicketService
             query = query.Where(t => t.SiteId == siteId.Value);
         if (!string.IsNullOrWhiteSpace(status) && Enum.TryParse<TicketStatus>(status, true, out var st))
             query = query.Where(t => t.Status == st);
+        if (!string.IsNullOrWhiteSpace(supplierSearch))
+            query = query.Where(t => t.Supplier.FullName.Contains(supplierSearch) || t.Supplier.IdNumber.Contains(supplierSearch));
+        if (dateFrom.HasValue)
+            query = query.Where(t => t.CreatedAt >= dateFrom.Value.ToUniversalTime());
+        if (dateTo.HasValue)
+            query = query.Where(t => t.CreatedAt <= dateTo.Value.ToUniversalTime());
+
+        var totalCount = await query.CountAsync();
 
         var tickets = await query
             .OrderByDescending(t => t.CreatedAt)
@@ -279,7 +290,53 @@ public class TicketService : ITicketService
             .Take(pageSize)
             .ToListAsync();
 
-        return tickets.Select(MapToDto).ToList();
+        return new Application.DTOs.PagedResult<InboundTicketResponseDto>
+        {
+            Items = tickets.Select(MapToDto).ToList(),
+            TotalCount = totalCount,
+            Page = page,
+            PageSize = pageSize
+        };
+    }
+
+    public async Task<InboundTicketResponseDto> CancelTicketAsync(Guid ticketId, string userId)
+    {
+        var ticket = await GetTicketEntity(ticketId);
+        if (ticket.Status == TicketStatus.Completed)
+            throw new InvalidOperationException("Cannot cancel a completed ticket.");
+        if (ticket.Status == TicketStatus.Cancelled)
+            throw new InvalidOperationException("Ticket is already cancelled.");
+
+        ticket.Status = TicketStatus.Cancelled;
+        ticket.UpdatedBy = userId;
+        await _db.SaveChangesAsync();
+        return await GetTicketAsync(ticketId) ?? throw new Exception("Ticket not found");
+    }
+
+    public async Task AddPhotoAsync(Guid ticketId, Domain.Enums.PhotoType photoType, string filePath, string userId)
+    {
+        var ticket = await _db.InboundTickets
+            .Include(t => t.ComplianceRecord)
+            .FirstOrDefaultAsync(t => t.Id == ticketId)
+            ?? throw new ArgumentException("Ticket not found");
+
+        _db.TicketPhotos.Add(new TicketPhoto
+        {
+            InboundTicketId = ticketId,
+            PhotoType = photoType,
+            FilePath = filePath,
+            CreatedBy = userId
+        });
+
+        // Update compliance flags
+        if (ticket.ComplianceRecord != null)
+        {
+            if (photoType == Domain.Enums.PhotoType.SellerFace) ticket.ComplianceRecord.HasSellerPhoto = true;
+            if (photoType == Domain.Enums.PhotoType.MaterialLoad) ticket.ComplianceRecord.HasLoadPhoto = true;
+            if (photoType == Domain.Enums.PhotoType.IdDocument) ticket.ComplianceRecord.HasIdPhoto = true;
+        }
+
+        await _db.SaveChangesAsync();
     }
 
     // ===== HELPERS =====
