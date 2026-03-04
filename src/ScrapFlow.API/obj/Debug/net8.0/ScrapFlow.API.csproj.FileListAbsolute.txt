@@ -270,7 +270,6 @@ C:\Users\kwanele\Documents\PROJECTS\ScrapFlow\src\ScrapFlow.API\obj\Debug\net8.0
 C:\Users\kwanele\Documents\PROJECTS\ScrapFlow\src\ScrapFlow.API\obj\Debug\net8.0\staticwebassets.build.json.cache
 C:\Users\kwanele\Documents\PROJECTS\ScrapFlow\src\ScrapFlow.API\obj\Debug\net8.0\staticwebassets.development.json
 C:\Users\kwanele\Documents\PROJECTS\ScrapFlow\src\ScrapFlow.API\obj\Debug\net8.0\staticwebassets.build.endpoints.json
-C:\Users\kwanele\Documents\PROJECTS\ScrapFlow\src\ScrapFlow.API\obj\Debug\net8.0\staticwebassets.upToDateCheck.txt
 C:\Users\kwanele\Documents\PROJECTS\ScrapFlow\src\ScrapFlow.API\obj\Debug\net8.0\ScrapFlo.A5D7F9A5.Up2Date
 C:\Users\kwanele\Documents\PROJECTS\ScrapFlow\src\ScrapFlow.API\obj\Debug\net8.0\ScrapFlow.API.dll
 C:\Users\kwanele\Documents\PROJECTS\ScrapFlow\src\ScrapFlow.API\obj\Debug\net8.0\refint\ScrapFlow.API.dll
