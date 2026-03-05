@@ -1,3 +1,6 @@
+using System.Security.Claims;
+using System.Text.Json;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using ScrapFlow.Domain.Entities;
@@ -6,7 +9,84 @@ namespace ScrapFlow.Infrastructure.Data;
 
 public class ScrapFlowDbContext : IdentityDbContext<AppUser>
 {
-    public ScrapFlowDbContext(DbContextOptions<ScrapFlowDbContext> options) : base(options) { }
+    private readonly IHttpContextAccessor? _httpContextAccessor;
+
+    public ScrapFlowDbContext(DbContextOptions<ScrapFlowDbContext> options, IHttpContextAccessor? httpContextAccessor = null)
+        : base(options)
+    {
+        _httpContextAccessor = httpContextAccessor;
+    }
+
+    private static readonly HashSet<string> AuditedEntities = new()
+    {
+        nameof(InboundTicket), nameof(OutboundTicket), nameof(InventoryLot), nameof(Supplier)
+    };
+
+    private List<AuditLog> BuildAuditLogs()
+    {
+        var httpContext = _httpContextAccessor?.HttpContext;
+        var userId   = httpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
+        var userName = httpContext?.User?.FindFirstValue("FullName")
+                       ?? httpContext?.User?.FindFirstValue(ClaimTypes.Email);
+        var ipAddress = httpContext?.Connection?.RemoteIpAddress?.ToString();
+
+        var logs = new List<AuditLog>();
+        ChangeTracker.DetectChanges();
+
+        foreach (var entry in ChangeTracker.Entries())
+        {
+            if (entry.State is EntityState.Detached or EntityState.Unchanged) continue;
+
+            var entityName = entry.Entity.GetType().Name;
+            if (!AuditedEntities.Contains(entityName)) continue;
+
+            var entityId = entry.Properties
+                .FirstOrDefault(p => p.Metadata.IsPrimaryKey())?.CurrentValue?.ToString() ?? "";
+
+            var action = entry.State switch
+            {
+                EntityState.Added    => "Created",
+                EntityState.Modified => "Updated",
+                EntityState.Deleted  => "Deleted",
+                _                    => "Unknown"
+            };
+
+            string? oldValues = null;
+            string? newValues = null;
+
+            if (entry.State == EntityState.Modified)
+            {
+                var changed = entry.Properties.Where(p => p.IsModified).ToList();
+                oldValues = JsonSerializer.Serialize(changed.ToDictionary(p => p.Metadata.Name, p => p.OriginalValue?.ToString()));
+                newValues = JsonSerializer.Serialize(changed.ToDictionary(p => p.Metadata.Name, p => p.CurrentValue?.ToString()));
+            }
+            else if (entry.State == EntityState.Added)
+            {
+                newValues = JsonSerializer.Serialize(entry.CurrentValues.Properties
+                    .ToDictionary(p => p.Name, p => entry.CurrentValues[p]?.ToString()));
+            }
+            else if (entry.State == EntityState.Deleted)
+            {
+                oldValues = JsonSerializer.Serialize(entry.OriginalValues.Properties
+                    .ToDictionary(p => p.Name, p => entry.OriginalValues[p]?.ToString()));
+            }
+
+            logs.Add(new AuditLog
+            {
+                EntityName = entityName,
+                EntityId   = entityId,
+                Action     = action,
+                OldValues  = oldValues,
+                NewValues  = newValues,
+                UserId     = userId,
+                UserName   = userName,
+                Timestamp  = DateTime.UtcNow,
+                IpAddress  = ipAddress
+            });
+        }
+
+        return logs;
+    }
 
     // Core tables
     public DbSet<Site> Sites => Set<Site>();
@@ -29,6 +109,9 @@ public class ScrapFlowDbContext : IdentityDbContext<AppUser>
     public DbSet<ComplianceRecord> ComplianceRecords => Set<ComplianceRecord>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<ItacReport> ItacReports => Set<ItacReport>();
+
+    // Automation
+    public DbSet<WebhookSubscription> WebhookSubscriptions => Set<WebhookSubscription>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -239,10 +322,21 @@ public class ScrapFlowDbContext : IdentityDbContext<AppUser>
             e.Property(ir => ir.TotalDisposalTonnage).HasPrecision(18, 2);
             e.Property(ir => ir.TotalDisposalValue).HasPrecision(18, 2);
         });
+
+        // ===== WebhookSubscription =====
+        builder.Entity<WebhookSubscription>(e =>
+        {
+            e.HasIndex(w => w.Name);
+            e.Property(w => w.Url).HasMaxLength(2048);
+            e.Property(w => w.EventFilter).HasMaxLength(100).HasDefaultValue("*");
+            e.Property(w => w.LastStatus).HasMaxLength(200);
+        });
     }
 
-    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
+        var auditLogs = BuildAuditLogs();
+
         foreach (var entry in ChangeTracker.Entries<Domain.Common.BaseEntity>())
         {
             switch (entry.State)
@@ -256,6 +350,9 @@ public class ScrapFlowDbContext : IdentityDbContext<AppUser>
             }
         }
 
-        return base.SaveChangesAsync(cancellationToken);
+        if (auditLogs.Count > 0)
+            AuditLogs.AddRange(auditLogs);
+
+        return await base.SaveChangesAsync(cancellationToken);
     }
 }
