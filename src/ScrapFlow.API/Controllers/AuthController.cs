@@ -1,8 +1,10 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using ScrapFlow.Application.DTOs;
 using ScrapFlow.Domain.Entities;
@@ -23,6 +25,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("login")]
+    [EnableRateLimiting("auth")]
     public async Task<ActionResult<AuthResponseDto>> Login(LoginDto dto)
     {
         var user = await _userManager.FindByEmailAsync(dto.Email);
@@ -38,24 +41,35 @@ public class AuthController : ControllerBase
         var roles = await _userManager.GetRolesAsync(user);
         var token = GenerateJwtToken(user, roles);
 
-        return Ok(new AuthResponseDto(token, user.Email!, user.FullName, roles.FirstOrDefault() ?? "User", DateTime.UtcNow.AddHours(12)));
+        return Ok(new AuthResponseDto(token, "", user.Email!, user.FullName, roles.FirstOrDefault() ?? "User", DateTime.UtcNow.AddHours(12)));
     }
 
+    private static readonly HashSet<string> AllowedRoles =
+        new(StringComparer.OrdinalIgnoreCase) { "Owner", "Manager", "ScaleOp", "Grader", "Accountant" };
+
     [HttpPost("register")]
-    // [Authorize(Roles = "Owner,Manager")]  
+    [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Owner,Manager")]
     public async Task<ActionResult<AuthResponseDto>> Register(RegisterDto dto)
     {
+        if (!AllowedRoles.Contains(dto.Role))
+            return BadRequest(new { message = $"Role '{dto.Role}' is not valid. Allowed: {string.Join(", ", AllowedRoles)}" });
+
+        // Only Owners can create other Owner accounts
+        if (dto.Role.Equals("Owner", StringComparison.OrdinalIgnoreCase)
+            && !User.IsInRole("Owner"))
+            return Forbid();
+
         var existingUser = await _userManager.FindByEmailAsync(dto.Email);
         if (existingUser != null)
             return BadRequest(new { message = "Email already registered" });
 
         var user = new AppUser
         {
-            UserName = dto.Email,
-            Email = dto.Email,
-            FirstName = dto.FirstName,
-            LastName = dto.LastName,
-            SiteId = dto.SiteId,
+            UserName       = dto.Email,
+            Email          = dto.Email,
+            FirstName      = dto.FirstName,
+            LastName       = dto.LastName,
+            SiteId         = dto.SiteId,
             EmailConfirmed = true
         };
 
@@ -65,10 +79,8 @@ public class AuthController : ControllerBase
 
         await _userManager.AddToRoleAsync(user, dto.Role);
 
-        var roles = new[] { dto.Role };
-        var token = GenerateJwtToken(user, roles);
-
-        return Ok(new AuthResponseDto(token, user.Email!, user.FullName, dto.Role, DateTime.UtcNow.AddHours(12)));
+        // Return the new user's info but do NOT issue a token for them here
+        return Ok(new { message = $"User {user.FullName} created with role {dto.Role}" });
     }
 
     private string GenerateJwtToken(AppUser user, IList<string> roles)
@@ -84,7 +96,8 @@ public class AuthController : ControllerBase
         foreach (var role in roles)
             claims.Add(new Claim(ClaimTypes.Role, role));
 
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"] ?? "ScrapFlowSA-SuperSecret-Key-2026-Minimum-32-Characters!"));
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(
+            _config["Jwt:Key"] ?? throw new InvalidOperationException("Jwt:Key is not configured")));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
         var token = new JwtSecurityToken(
