@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("ScrapFlow.Tests")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+295da57db41cfeeac62cb9a5882cb4bc5bc821e5")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+6d95aea8e00de2aee4b84ea15f4e2d2f8179df3c")]
 [assembly: System.Reflection.AssemblyProductAttribute("ScrapFlow.Tests")]
 [assembly: System.Reflection.AssemblyTitleAttribute("ScrapFlow.Tests")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

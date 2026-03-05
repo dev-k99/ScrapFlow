@@ -4,10 +4,13 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
   </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.0" />
@@ -26,6 +29,7 @@
     <ProjectReference Include="..\..\src\ScrapFlow.Domain\ScrapFlow.Domain.csproj" />
     <ProjectReference Include="..\..\src\ScrapFlow.Application\ScrapFlow.Application.csproj" />
     <ProjectReference Include="..\..\src\ScrapFlow.Infrastructure\ScrapFlow.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\ScrapFlow.API\ScrapFlow.API.csproj" />
   </ItemGroup>
 
 </Project>
