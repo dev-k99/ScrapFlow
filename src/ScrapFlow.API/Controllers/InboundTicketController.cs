@@ -30,6 +30,7 @@ public class InboundTicketController : ControllerBase
 
     /// <summary>Step 1: Create a new inbound ticket</summary>
     [HttpPost]
+    [Authorize(Roles = "Owner,Manager,ScaleOp")]
     public async Task<ActionResult<InboundTicketResponseDto>> Create(CreateInboundTicketDto dto)
     {
         try
@@ -45,6 +46,7 @@ public class InboundTicketController : ControllerBase
 
     /// <summary>Step 2: Record gross weight</summary>
     [HttpPut("{id}/gross-weight")]
+    [Authorize(Roles = "Owner,Manager,ScaleOp")]
     public async Task<ActionResult<InboundTicketResponseDto>> RecordGrossWeight(Guid id, RecordGrossWeightDto dto)
     {
         try
@@ -59,6 +61,7 @@ public class InboundTicketController : ControllerBase
 
     /// <summary>Step 3: Record grading (material grades and weights)</summary>
     [HttpPut("{id}/grading")]
+    [Authorize(Roles = "Owner,Manager,Grader")]
     public async Task<ActionResult<InboundTicketResponseDto>> RecordGrading(Guid id, RecordGradingDto dto)
     {
         try
@@ -73,6 +76,7 @@ public class InboundTicketController : ControllerBase
 
     /// <summary>Step 4: Record tare weight - auto-calculates net weight + price</summary>
     [HttpPut("{id}/tare-weight")]
+    [Authorize(Roles = "Owner,Manager,ScaleOp")]
     public async Task<ActionResult<InboundTicketResponseDto>> RecordTareWeight(Guid id, RecordTareWeightDto dto)
     {
         try
@@ -87,6 +91,7 @@ public class InboundTicketController : ControllerBase
 
     /// <summary>Step 5: Record electronic payment details (CASH BANNED)</summary>
     [HttpPut("{id}/payment")]
+    [Authorize(Roles = "Owner,Manager,Accountant")]
     public async Task<ActionResult<InboundTicketResponseDto>> RecordPayment(Guid id, RecordPaymentDto dto)
     {
         try
@@ -101,6 +106,7 @@ public class InboundTicketController : ControllerBase
 
     /// <summary>Step 6: Complete ticket - broadcasts TicketCompleted via SignalR</summary>
     [HttpPut("{id}/complete")]
+    [Authorize(Roles = "Owner,Manager,Accountant")]
     public async Task<ActionResult<InboundTicketResponseDto>> Complete(Guid id, CompleteTicketDto dto)
     {
         try
@@ -157,12 +163,13 @@ public class InboundTicketController : ControllerBase
         [FromQuery] int page     = 1,
         [FromQuery] int pageSize = 20)
     {
-        var result = await _ticketService.GetTicketsAsync(siteId, status, page, pageSize);
+        var result = await _ticketService.GetTicketsAsync(siteId, status, null, dateFrom, dateTo, page, pageSize);
         return Ok(result);
     }
 
     /// <summary>Upload a compliance photo for a ticket (multipart/form-data, max 10 MB)</summary>
     [HttpPost("{id}/photos")]
+    [Authorize(Roles = "Owner,Manager,ScaleOp,Grader")]
     public async Task<ActionResult> UploadPhoto(Guid id, [FromForm] IFormFile file, [FromForm] string photoType)
     {
         var ticket = await _ticketService.GetTicketAsync(id);
@@ -199,6 +206,7 @@ public class InboundTicketController : ControllerBase
 
     /// <summary>Cancel a ticket</summary>
     [HttpPut("{id}/cancel")]
+    [Authorize(Roles = "Owner,Manager")]
     public async Task<ActionResult<InboundTicketResponseDto>> Cancel(Guid id)
     {
         try
