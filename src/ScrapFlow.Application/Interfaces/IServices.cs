@@ -29,7 +29,7 @@ public interface IMaterialService
 
 public interface IDashboardService
 {
-    Task<DashboardDto> GetDashboardAsync(Guid? siteId = null);
+    Task<DashboardDto> GetDashboardAsync(Guid? siteId = null, string? range = "7d");
 }
 
 public interface ISupplierService
