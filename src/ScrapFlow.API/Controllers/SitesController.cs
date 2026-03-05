@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ScrapFlow.Application.DTOs;
@@ -8,6 +9,7 @@ namespace ScrapFlow.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class SitesController : ControllerBase
 {
     private readonly ScrapFlowDbContext _db;
@@ -52,6 +54,7 @@ public class SitesController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "Owner")]
     public async Task<ActionResult<SiteDto>> Create(CreateSiteDto dto)
     {
         if (await _db.Sites.AnyAsync(s => s.Name == dto.Name))
@@ -59,11 +62,11 @@ public class SitesController : ControllerBase
 
         var site = new Site
         {
-            Name = dto.Name,
-            Address = dto.Address,
-            City = dto.City,
-            Province = dto.Province,
-            PostalCode = dto.PostalCode,
+            Name        = dto.Name,
+            Address     = dto.Address,
+            City        = dto.City,
+            Province    = dto.Province,
+            PostalCode  = dto.PostalCode,
             PhoneNumber = dto.PhoneNumber
         };
 
@@ -73,17 +76,43 @@ public class SitesController : ControllerBase
         return CreatedAtAction(nameof(Get), new { id = site.Id }, MapToDto(site, 0, 0));
     }
 
+    [HttpPut("{id}")]
+    [Authorize(Roles = "Owner,Manager")]
+    public async Task<ActionResult<SiteDto>> Update(Guid id, UpdateSiteDto dto)
+    {
+        var s = await _db.Sites.FindAsync(id);
+        if (s == null) return NotFound();
+
+        s.Address     = dto.Address;
+        s.City        = dto.City;
+        s.Province    = dto.Province;
+        s.PostalCode  = dto.PostalCode;
+        s.PhoneNumber = dto.PhoneNumber;
+        s.IsActive    = dto.IsActive;
+
+        await _db.SaveChangesAsync();
+
+        var activeTickets = await _db.InboundTickets
+            .CountAsync(t => t.SiteId == s.Id && t.Status != Domain.Enums.TicketStatus.Completed
+                                               && t.Status != Domain.Enums.TicketStatus.Cancelled);
+        var inventoryWeight = await _db.InventoryLots
+            .Where(l => l.SiteId == s.Id && l.Status == Domain.Enums.LotStatus.InStock)
+            .SumAsync(l => (decimal?)l.Quantity) ?? 0;
+
+        return Ok(MapToDto(s, activeTickets, inventoryWeight));
+    }
+
     private static SiteDto MapToDto(Site s, int activeTickets, decimal inventoryWeight) => new()
     {
-        Id = s.Id,
-        Name = s.Name,
-        Address = s.Address,
-        City = s.City,
-        Province = s.Province,
-        PostalCode = s.PostalCode,
-        PhoneNumber = s.PhoneNumber,
-        IsActive = s.IsActive,
-        ActiveTickets = activeTickets,
+        Id                  = s.Id,
+        Name                = s.Name,
+        Address             = s.Address,
+        City                = s.City,
+        Province            = s.Province,
+        PostalCode          = s.PostalCode,
+        PhoneNumber         = s.PhoneNumber,
+        IsActive            = s.IsActive,
+        ActiveTickets       = activeTickets,
         TotalInventoryWeight = inventoryWeight
     };
 }
