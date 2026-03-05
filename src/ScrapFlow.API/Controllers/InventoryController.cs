@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using ScrapFlow.API.Hubs;
 using ScrapFlow.Application.DTOs;
+using ScrapFlow.Application.Interfaces;
 using ScrapFlow.Domain.Enums;
 using ScrapFlow.Infrastructure.Data;
 
@@ -16,11 +17,13 @@ public class InventoryController : ControllerBase
 {
     private readonly ScrapFlowDbContext _db;
     private readonly IHubContext<InventoryHub> _hub;
+    private readonly IWebhookService _webhookService;
 
-    public InventoryController(ScrapFlowDbContext db, IHubContext<InventoryHub> hub)
+    public InventoryController(ScrapFlowDbContext db, IHubContext<InventoryHub> hub, IWebhookService webhookService)
     {
         _db  = db;
         _hub = hub;
+        _webhookService = webhookService;
     }
 
     [HttpGet]
@@ -81,6 +84,7 @@ public class InventoryController : ControllerBase
         if (dto.NewQuantity < 0)
             return BadRequest(new { message = "Quantity cannot be negative" });
 
+        var previousQty = lot.Quantity;
         lot.Quantity = dto.NewQuantity;
         lot.Notes = string.IsNullOrWhiteSpace(lot.Notes)
             ? dto.Reason
@@ -97,6 +101,17 @@ public class InventoryController : ControllerBase
             lotId  = id
         });
 
+        _ = Task.Run(() => _webhookService.FireAsync("inventory.lot.adjusted", new
+        {
+            lotNumber = result.LotNumber,
+            materialCode = result.MaterialCode,
+            siteName = result.SiteName,
+            previousQuantity = previousQty,
+            newQuantity = dto.NewQuantity,
+            delta = dto.NewQuantity - previousQty,
+            reason = dto.Reason
+        }));
+
         return Ok(result);
     }
 
@@ -109,6 +124,8 @@ public class InventoryController : ControllerBase
         if (lot.Status == LotStatus.WrittenOff)
             return UnprocessableEntity(new { message = "Lot is already written off" });
 
+        var writeOffQty = lot.Quantity;
+        var writeOffSiteId = lot.SiteId;
         lot.Status   = LotStatus.WrittenOff;
         lot.Quantity = 0;
         lot.Notes = string.IsNullOrWhiteSpace(lot.Notes)
@@ -118,12 +135,22 @@ public class InventoryController : ControllerBase
         await _db.SaveChangesAsync();
 
         var result = await GetFull(id);
-        await _hub.Clients.Group($"site-{lot.SiteId}").SendAsync("InventoryUpdated", new
+        await _hub.Clients.Group($"site-{writeOffSiteId}").SendAsync("InventoryUpdated", new
         {
-            siteId = lot.SiteId,
+            siteId = writeOffSiteId,
             source = "WriteOff",
             lotId  = id
         });
+
+        _ = Task.Run(() => _webhookService.FireAsync("inventory.lot.written_off", new
+        {
+            lotNumber = result.LotNumber,
+            materialCode = result.MaterialCode,
+            siteName = result.SiteName,
+            quantity = writeOffQty,
+            estimatedValue = result.EstimatedValue,
+            reason = dto.Reason
+        }));
 
         return Ok(result);
     }
