@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using ScrapFlow.API.Hubs;
 using ScrapFlow.Application.DTOs;
+using ScrapFlow.Application.Interfaces;
 using ScrapFlow.Domain.Entities;
 using ScrapFlow.Domain.Enums;
 using ScrapFlow.Infrastructure.Data;
@@ -18,11 +19,13 @@ public class OutboundTicketsController : ControllerBase
 {
     private readonly ScrapFlowDbContext _db;
     private readonly IHubContext<InventoryHub> _hub;
+    private readonly IWebhookService _webhookService;
 
-    public OutboundTicketsController(ScrapFlowDbContext db, IHubContext<InventoryHub> hub)
+    public OutboundTicketsController(ScrapFlowDbContext db, IHubContext<InventoryHub> hub, IWebhookService webhookService)
     {
         _db  = db;
         _hub = hub;
+        _webhookService = webhookService;
     }
 
     private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "system";
@@ -73,6 +76,7 @@ public class OutboundTicketsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "Owner,Manager")]
     public async Task<ActionResult<OutboundTicketResponseDto>> Create(CreateOutboundTicketDto dto)
     {
         var customer = await _db.Customers.FindAsync(dto.CustomerId);
@@ -101,6 +105,7 @@ public class OutboundTicketsController : ControllerBase
     }
 
     [HttpPut("{id}/gross-weight")]
+    [Authorize(Roles = "Owner,Manager")]
     public async Task<ActionResult<OutboundTicketResponseDto>> RecordGrossWeight(Guid id, RecordOutboundGrossWeightDto dto)
     {
         var ticket = await FindTicket(id);
@@ -115,6 +120,7 @@ public class OutboundTicketsController : ControllerBase
     }
 
     [HttpPut("{id}/grading")]
+    [Authorize(Roles = "Owner,Manager")]
     public async Task<ActionResult<OutboundTicketResponseDto>> RecordGrading(Guid id, RecordOutboundGradingDto dto)
     {
         var ticket = await _db.OutboundTickets
@@ -158,6 +164,7 @@ public class OutboundTicketsController : ControllerBase
     }
 
     [HttpPut("{id}/tare-weight")]
+    [Authorize(Roles = "Owner,Manager")]
     public async Task<ActionResult<OutboundTicketResponseDto>> RecordTareWeight(Guid id, RecordOutboundTareWeightDto dto)
     {
         var ticket = await _db.OutboundTickets
@@ -188,6 +195,7 @@ public class OutboundTicketsController : ControllerBase
     /// then broadcasts InventoryUpdated via SignalR so the dashboard refreshes.
     /// </summary>
     [HttpPut("{id}/complete")]
+    [Authorize(Roles = "Owner,Manager")]
     public async Task<ActionResult<OutboundTicketResponseDto>> Complete(Guid id, CompleteOutboundTicketDto dto)
     {
         var ticket = await _db.OutboundTickets
@@ -261,6 +269,27 @@ public class OutboundTicketsController : ControllerBase
                 netWeight    = result.NetWeight
             });
         }
+
+        _ = Task.Run(() => _webhookService.FireAsync("ticket.outbound.completed", new
+        {
+            ticketNumber = result.TicketNumber,
+            siteName = result.Site?.Name ?? "",
+            customer = new
+            {
+                companyName = result.Customer?.CompanyName ?? "",
+                contactNumber = result.Customer?.ContactNumber ?? "",
+                email = (string?)null
+            },
+            lineItems = result.LineItems.Select(li => new
+            {
+                materialCode = li.MaterialCode,
+                netWeight = li.NetWeight,
+                lineTotal = li.LineTotal
+            }),
+            netWeight = result.NetWeight,
+            totalPrice = result.TotalPrice,
+            invoiceNumber = result.InvoiceNumber
+        }));
 
         return Ok(result);
     }
