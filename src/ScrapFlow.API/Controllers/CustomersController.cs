@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ScrapFlow.Application.DTOs;
@@ -9,6 +10,7 @@ namespace ScrapFlow.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class CustomersController : ControllerBase
 {
     private readonly ScrapFlowDbContext _db;
@@ -50,23 +52,24 @@ public class CustomersController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "Owner,Manager")]
     public async Task<ActionResult<CustomerDto>> Create(CreateCustomerDto dto)
     {
         var customer = new Customer
         {
-            CompanyName = dto.CompanyName,
-            TradingAs = dto.TradingAs,
+            CompanyName        = dto.CompanyName,
+            TradingAs          = dto.TradingAs,
             RegistrationNumber = dto.RegistrationNumber,
-            VatNumber = dto.VatNumber,
-            ContactPerson = dto.ContactPerson,
-            ContactNumber = dto.ContactNumber,
-            Email = dto.Email,
-            Address = dto.Address,
-            City = dto.City,
-            Province = dto.Province,
-            BankName = dto.BankName,
-            AccountNumber = dto.AccountNumber,
-            BranchCode = dto.BranchCode
+            VatNumber          = dto.VatNumber,
+            ContactPerson      = dto.ContactPerson,
+            ContactNumber      = dto.ContactNumber,
+            Email              = dto.Email,
+            Address            = dto.Address,
+            City               = dto.City,
+            Province           = dto.Province,
+            BankName           = dto.BankName,
+            AccountNumber      = dto.AccountNumber,
+            BranchCode         = dto.BranchCode
         };
 
         _db.Customers.Add(customer);
@@ -75,18 +78,45 @@ public class CustomersController : ControllerBase
         return CreatedAtAction(nameof(Get), new { id = customer.Id }, MapToDto(customer, 0, 0));
     }
 
+    [HttpPut("{id}")]
+    [Authorize(Roles = "Owner,Manager")]
+    public async Task<ActionResult<CustomerDto>> Update(Guid id, UpdateCustomerDto dto)
+    {
+        var c = await _db.Customers.FindAsync(id);
+        if (c == null) return NotFound();
+
+        c.ContactPerson = dto.ContactPerson;
+        c.ContactNumber = dto.ContactNumber;
+        c.Email         = dto.Email;
+        c.Address       = dto.Address;
+        c.City          = dto.City;
+        c.Province      = dto.Province;
+        c.BankName      = dto.BankName;
+        c.AccountNumber = dto.AccountNumber;
+        c.BranchCode    = dto.BranchCode;
+        c.IsActive      = dto.IsActive;
+
+        await _db.SaveChangesAsync();
+
+        var tickets = await _db.OutboundTickets
+            .Where(t => t.CustomerId == c.Id && t.Status == TicketStatus.Completed)
+            .ToListAsync();
+
+        return Ok(MapToDto(c, tickets.Count, tickets.Sum(t => t.TotalPrice)));
+    }
+
     private static CustomerDto MapToDto(Customer c, int totalTickets, decimal totalValue) => new()
     {
-        Id = c.Id,
-        CompanyName = c.CompanyName,
-        TradingAs = c.TradingAs,
+        Id                 = c.Id,
+        CompanyName        = c.CompanyName,
+        TradingAs          = c.TradingAs,
         RegistrationNumber = c.RegistrationNumber,
-        ContactPerson = c.ContactPerson,
-        ContactNumber = c.ContactNumber,
-        Email = c.Email,
-        City = c.City,
-        IsActive = c.IsActive,
-        TotalTickets = totalTickets,
-        TotalValue = totalValue
+        ContactPerson      = c.ContactPerson,
+        ContactNumber      = c.ContactNumber,
+        Email              = c.Email,
+        City               = c.City,
+        IsActive           = c.IsActive,
+        TotalTickets       = totalTickets,
+        TotalValue         = totalValue
     };
 }
