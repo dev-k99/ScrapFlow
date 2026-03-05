@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ScrapFlow.Application.DTOs;
+using ScrapFlow.Application.Interfaces;
 using ScrapFlow.Domain.Entities;
 using ScrapFlow.Domain.Enums;
 using ScrapFlow.Infrastructure.Data;
@@ -14,8 +15,13 @@ namespace ScrapFlow.API.Controllers;
 public class SuppliersController : ControllerBase
 {
     private readonly ScrapFlowDbContext _db;
+    private readonly IWebhookService _webhookService;
 
-    public SuppliersController(ScrapFlowDbContext db) => _db = db;
+    public SuppliersController(ScrapFlowDbContext db, IWebhookService webhookService)
+    {
+        _db = db;
+        _webhookService = webhookService;
+    }
 
     [HttpGet]
     public async Task<ActionResult<List<SupplierDto>>> GetAll([FromQuery] string? search)
@@ -62,6 +68,7 @@ public class SuppliersController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "Owner,Manager")]
     public async Task<ActionResult<SupplierDto>> Create(CreateSupplierDto dto)
     {
         var supplier = new Supplier
@@ -75,6 +82,14 @@ public class SuppliersController : ControllerBase
         _db.Suppliers.Add(supplier);
         await _db.SaveChangesAsync();
 
+        _ = Task.Run(() => _webhookService.FireAsync("supplier.registered", new
+        {
+            fullName = supplier.FullName,
+            idNumber = supplier.IdNumber,
+            contactNumber = supplier.ContactNumber,
+            isVerified = supplier.IsVerified
+        }));
+
         return CreatedAtAction(nameof(Get), new { id = supplier.Id }, new SupplierDto
         {
             Id = supplier.Id, FullName = supplier.FullName, IdNumber = supplier.IdNumber
@@ -82,6 +97,7 @@ public class SuppliersController : ControllerBase
     }
 
     [HttpPut("{id}")]
+    [Authorize(Roles = "Owner,Manager")]
     public async Task<ActionResult<SupplierDto>> Update(Guid id, UpdateSupplierDto dto)
     {
         var s = await _db.Suppliers.FindAsync(id);
