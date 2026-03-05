@@ -17,25 +17,33 @@ public class PagedResult<T>
 }
 
 // ===== AUTH =====
-public record LoginDto([Required] string Email, [Required] string Password);
+public record LoginDto(
+    [Required][EmailAddress][MaxLength(256)] string Email,
+    [Required][MaxLength(128)] string Password);
+
 public record RegisterDto(
-    [Required][EmailAddress] string Email,
-    [Required][MinLength(8)] string Password,
-    [Required] string FirstName,
-    [Required] string LastName,
-    [Required] string Role,
+    [Required][EmailAddress][MaxLength(256)] string Email,
+    [Required][MinLength(8)][MaxLength(128)] string Password,
+    [Required][MaxLength(100)] string FirstName,
+    [Required][MaxLength(100)] string LastName,
+    [Required][MaxLength(50)]  string Role,
     Guid? SiteId);
 public record AuthResponseDto(string Token, string RefreshToken, string Email, string FullName, string Role, DateTime Expiry);
 public record RefreshTokenDto([Required] string RefreshToken);
+public record UpdateProfileDto(
+    [Required][MaxLength(100)] string FirstName,
+    [Required][MaxLength(100)] string LastName,
+    [Required] string CurrentPassword,
+    [MinLength(8)][MaxLength(128)] string? NewPassword);
 
 // ===== TICKET =====
-public record CreateInboundTicketDto([Required] Guid SupplierId, [Required] Guid SiteId, string? Notes);
+public record CreateInboundTicketDto([Required] Guid SupplierId, [Required] Guid SiteId, [MaxLength(500)] string? Notes);
 public record RecordGrossWeightDto([Range(1, 200000, ErrorMessage = "Gross weight must be between 1 and 200 000 kg")] decimal GrossWeight);
-public record GradingLineItemDto([Required] Guid MaterialGradeId, [Range(1, 100000)] decimal NetWeight, string? GradeNotes, [Range(0, 100)] int QualityScore = 100);
+public record GradingLineItemDto([Required] Guid MaterialGradeId, [Range(1, 100000)] decimal NetWeight, [MaxLength(200)] string? GradeNotes, [Range(0, 100)] int QualityScore = 100);
 public record RecordGradingDto([Required][MinLength(1)] List<GradingLineItemDto> LineItems);
 public record RecordTareWeightDto([Range(1, 200000)] decimal TareWeight);
-public record RecordPaymentDto([Required][MinLength(3)] string PaymentReference, string? PaymentProofPath);
-public record CompleteTicketDto(string? SellerSignatureData);
+public record RecordPaymentDto([Required][MinLength(3)][MaxLength(100)] string PaymentReference, [MaxLength(500)] string? PaymentProofPath);
+public record CompleteTicketDto([MaxLength(10000)] string? SellerSignatureData);
 
 public class InboundTicketResponseDto
 {
@@ -141,11 +149,11 @@ public record UpdateSupplierDto(
     bool IsWastePicker, string? WastePickerArea);
 
 // ===== OUTBOUND TICKETS =====
-public record CreateOutboundTicketDto([Required] Guid CustomerId, [Required] Guid SiteId, string? Notes);
+public record CreateOutboundTicketDto([Required] Guid CustomerId, [Required] Guid SiteId, [MaxLength(500)] string? Notes);
 public record RecordOutboundGrossWeightDto([Range(1, 200000)] decimal GrossWeight);
 public record RecordOutboundGradingDto([Required][MinLength(1)] List<GradingLineItemDto> LineItems);
 public record RecordOutboundTareWeightDto([Range(1, 200000)] decimal TareWeight);
-public record CompleteOutboundTicketDto(string? InvoiceNumber, string? Notes);
+public record CompleteOutboundTicketDto([MaxLength(50)] string? InvoiceNumber, [MaxLength(500)] string? Notes);
 
 public class OutboundTicketResponseDto
 {
@@ -191,8 +199,8 @@ public class InventoryLotDto
     public Guid? InboundTicketId { get; set; }
 }
 
-public record AdjustLotDto([Range(0, 1000000)] decimal NewQuantity, [Required][MinLength(3)] string Reason);
-public record WriteOffLotDto([Required][MinLength(3)] string Reason);
+public record AdjustLotDto([Range(0, 1000000)] decimal NewQuantity, [Required][MinLength(3)][MaxLength(300)] string Reason);
+public record WriteOffLotDto([Required][MinLength(3)][MaxLength(300)] string Reason);
 
 // ===== SITES =====
 public class SiteDto
