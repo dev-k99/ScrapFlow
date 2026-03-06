@@ -1,8 +1,8 @@
-import { cn } from "../../utils/utils"
+import { cn } from "@/lib/utils"
 
 export const Card = ({ className, children, ...props }) => {
   return (
-    <div className={cn("apple-card glass p-6", className)} {...props}>
+    <div className={cn("glass-card p-6", className)} {...props}>
       {children}
     </div>
   )
@@ -18,7 +18,7 @@ export const CardHeader = ({ className, children, ...props }) => {
 
 export const CardTitle = ({ className, children, ...props }) => {
   return (
-    <h3 className={cn("text-lg font-semibold", className)} {...props}>
+    <h3 className={cn("text-lg font-bold tracking-tight text-[var(--color-text)]", className)} {...props}>
       {children}
     </h3>
   )

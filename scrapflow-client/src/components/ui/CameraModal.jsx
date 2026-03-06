@@ -1,117 +1,109 @@
-import React, { useRef, useState, useEffect } from 'react';
-import { Camera, X, Check, RefreshCw } from 'lucide-react';
-import { Button } from './Button';
-import { Card } from './Card';
-import { getCameraStream, capturePhoto } from '../../utils/camera';
+import { useRef, useState, useEffect } from 'react'
+import { Camera, X, Check, RefreshCw } from 'lucide-react'
 
-export const CameraModal = ({ isOpen, onClose, onCapture, title = "Capture Photo" }) => {
-  const videoRef = useRef(null);
-  const canvasRef = useRef(null);
-  const [stream, setStream] = useState(null);
-  const [capturedImage, setCapturedImage] = useState(null);
-  const [isCamerReady, setIsCameraReady] = useState(false);
+async function getCameraStream() {
+  return navigator.mediaDevices.getUserMedia({
+    video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } },
+    audio: false,
+  })
+}
+
+async function capturePhoto(videoRef, canvasRef) {
+  const video = videoRef.current
+  const canvas = canvasRef.current
+  if (!video || !canvas) return null
+  canvas.width = video.videoWidth
+  canvas.height = video.videoHeight
+  canvas.getContext('2d').drawImage(video, 0, 0)
+  return new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.9))
+}
+
+export const CameraModal = ({ isOpen, onClose, onCapture, title = 'Capture Photo' }) => {
+  const videoRef = useRef(null)
+  const canvasRef = useRef(null)
+  const [stream, setStream] = useState(null)
+  const [capturedImage, setCapturedImage] = useState(null)
+  const [isCameraReady, setIsCameraReady] = useState(false)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
-    if (isOpen) {
-      startCamera();
-    } else {
-      stopCamera();
-    }
-    return () => stopCamera();
-  }, [isOpen]);
+    if (isOpen) startCamera()
+    else stopCamera()
+    return () => stopCamera()
+  }, [isOpen])
 
   const startCamera = async () => {
+    setError(null)
     try {
-      const newStream = await getCameraStream();
-      setStream(newStream);
+      const newStream = await getCameraStream()
+      setStream(newStream)
       if (videoRef.current) {
-        videoRef.current.srcObject = newStream;
-        setIsCameraReady(true);
+        videoRef.current.srcObject = newStream
+        videoRef.current.onloadedmetadata = () => setIsCameraReady(true)
       }
     } catch (err) {
-      console.error("Failed to start camera", err);
+      setError('Camera access denied or unavailable.')
     }
-  };
+  }
 
   const stopCamera = () => {
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop());
-      setStream(null);
-    }
-    setIsCameraReady(false);
-    setCapturedImage(null);
-  };
+    stream?.getTracks().forEach((t) => t.stop())
+    setStream(null)
+    setIsCameraReady(false)
+    setCapturedImage(null)
+  }
 
   const handleCapture = async () => {
-    const blob = await capturePhoto(videoRef, canvasRef);
-    if (blob) {
-      const url = URL.createObjectURL(blob);
-      setCapturedImage({ blob, url });
-    }
-  };
+    const blob = await capturePhoto(videoRef, canvasRef)
+    if (blob) setCapturedImage({ blob, url: URL.createObjectURL(blob) })
+  }
 
   const handleConfirm = () => {
-    if (capturedImage) {
-      onCapture(capturedImage.blob);
-      onClose();
-    }
-  };
+    if (capturedImage) { onCapture(capturedImage.blob); onClose() }
+  }
 
-  if (!isOpen) return null;
+  if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <Card className="w-full max-w-2xl bg-white overflow-hidden p-0">
-        <div className="p-6 border-b flex justify-between items-center">
-          <h2 className="text-xl font-bold">{title}</h2>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-            <X size={20} />
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
+      <div className="glass-card w-full max-w-2xl overflow-hidden p-0">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--color-border)]">
+          <h2 className="font-bold text-[var(--color-text)]">{title}</h2>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg text-[var(--color-text-muted)] hover:bg-[var(--color-surface-2)] transition-colors">
+            <X size={18} />
           </button>
         </div>
-
         <div className="relative aspect-video bg-black flex items-center justify-center">
-          {!capturedImage ? (
+          {error ? (
+            <p className="text-white/70 text-sm px-8 text-center">{error}</p>
+          ) : !capturedImage ? (
             <>
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                className="w-full h-full object-cover"
-              />
-              {!isCamerReady && <RefreshCw className="animate-spin text-white" size={48} />}
+              <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+              {!isCameraReady && <RefreshCw className="absolute animate-spin text-white" size={36} />}
             </>
           ) : (
             <img src={capturedImage.url} className="w-full h-full object-contain" alt="Captured" />
           )}
-          
           <canvas ref={canvasRef} className="hidden" />
         </div>
-
-        <div className="p-6 flex justify-center space-x-4 bg-gray-50">
+        <div className="flex justify-center gap-4 p-5 bg-[var(--color-surface-2)]">
           {!capturedImage ? (
-            <Button 
-              onClick={handleCapture} 
-              disabled={!isCamerReady}
-              className="rounded-full w-16 h-16 p-0 flex items-center justify-center"
-            >
-              <div className="w-12 h-12 rounded-full border-4 border-white/30 flex items-center justify-center">
-                <div className="w-8 h-8 bg-white rounded-full"></div>
-              </div>
-            </Button>
+            <button onClick={handleCapture} disabled={!isCameraReady || !!error}
+              className="w-16 h-16 rounded-full bg-white border-4 border-emerald-500 flex items-center justify-center shadow-lg disabled:opacity-40 hover:scale-105 transition-transform active:scale-95">
+              <Camera size={24} className="text-emerald-600" />
+            </button>
           ) : (
             <>
-              <Button variant="secondary" onClick={() => setCapturedImage(null)} className="flex items-center space-x-2">
-                <RefreshCw size={18} />
-                <span>Retake</span>
-              </Button>
-              <Button onClick={handleConfirm} className="flex items-center space-x-2">
-                <Check size={18} />
-                <span>Use Photo</span>
-              </Button>
+              <button onClick={() => setCapturedImage(null)} className="btn-ghost flex items-center gap-2">
+                <RefreshCw size={16} /> Retake
+              </button>
+              <button onClick={handleConfirm} className="btn-brand flex items-center gap-2">
+                <Check size={16} /> Use Photo
+              </button>
             </>
           )}
         </div>
-      </Card>
+      </div>
     </div>
-  );
-};
+  )
+}

@@ -1,4 +1,4 @@
-import { cn } from "../../utils/utils"
+import { cn } from "@/lib/utils"
 
 export const Button = ({ className, variant = "primary", size = "md", children, ...props }) => {
   const variants = {
