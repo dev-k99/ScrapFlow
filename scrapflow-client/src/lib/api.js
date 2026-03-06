@@ -32,7 +32,7 @@ export const authApi = {
 
 // Dashboard
 export const dashboardApi = {
-  get: (siteId) => api.get('/api/dashboard', { params: { siteId } }),
+  get: (siteId, range) => api.get('/api/dashboard', { params: { siteId, range } }),
 }
 
 // Suppliers
@@ -95,6 +95,8 @@ export const reportsApi = {
   getById: (id) => api.get(`/api/reports/itac/${id}`),
   submit: (id) => api.post(`/api/reports/itac/${id}/submit`),
   downloadCsv: (id) => api.get(`/api/reports/itac/${id}/csv`, { responseType: 'blob' }),
+  downloadSaps: (dateFrom, dateTo) =>
+    api.get('/api/reports/saps', { params: { dateFrom, dateTo }, responseType: 'blob' }),
 }
 
 // Sites
@@ -115,6 +117,21 @@ export const customersApi = {
 export const usersApi = {
   getAll: () => api.get('/api/users'),
   deactivate: (id) => api.put(`/api/users/${id}/deactivate`),
+  updateProfile: (dto) => api.put('/api/users/me', dto),
+}
+
+// Webhooks / Automations (Owner only)
+export const webhooksApi = {
+  getAll: () => api.get('/api/webhooks'),
+  create: (dto) => api.post('/api/webhooks', dto),
+  remove: (id) => api.delete(`/api/webhooks/${id}`),
+  toggle: (id) => api.put(`/api/webhooks/${id}/toggle`),
+  test: (id) => api.post(`/api/webhooks/${id}/test`),
+}
+
+// Audit Logs (Owner/Manager only)
+export const auditApi = {
+  getAll: (params) => api.get('/api/auditlogs', { params }),
 }
 
 export default api
