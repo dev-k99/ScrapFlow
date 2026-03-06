@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useEffect } from 'react'
 import { useAuthStore } from '@/store/authStore'
 import { useUiStore } from '@/store/uiStore'
+import ErrorBoundary from '@/components/ErrorBoundary'
 
 // Layouts
 import ProtectedRoute from '@/components/layout/ProtectedRoute'
@@ -25,6 +26,8 @@ import SupplierDetailPage from '@/pages/suppliers/SupplierDetailPage'
 import ReportsPage from '@/pages/reports/ReportsPage'
 import PortalsPage from '@/pages/portals/PortalsPage'
 import SettingsPage from '@/pages/settings/SettingsPage'
+import AuditPage from '@/pages/audit/AuditPage'
+import NotFoundPage from '@/pages/NotFoundPage'
 
 export default function App() {
   const { theme } = useUiStore()
@@ -51,30 +54,31 @@ export default function App() {
         {/* Protected app routes */}
         <Route element={<ProtectedRoute />}>
           <Route element={<AppShell />}>
-            <Route path="/dashboard" element={<DashboardPage />} />
-            
-            <Route path="/tickets/inbound" element={<InboundTicketsPage />} />
-            <Route path="/tickets/inbound/new" element={<InboundTicketWizard />} />
-            <Route path="/tickets/inbound/:id" element={<InboundTicketWizard />} />
-            
-            <Route path="/tickets/outbound" element={<OutboundTicketsPage />} />
-            <Route path="/tickets/outbound/new" element={<OutboundTicketWizard />} />
-            <Route path="/tickets/outbound/:id" element={<OutboundTicketWizard />} />
-            
-            <Route path="/inventory" element={<InventoryPage />} />
-            <Route path="/materials" element={<MaterialsPage />} />
-            
-            <Route path="/suppliers" element={<SuppliersPage />} />
-            <Route path="/suppliers/:id" element={<SupplierDetailPage />} />
-            
-            <Route path="/reports" element={<ReportsPage />} />
-            <Route path="/portals" element={<PortalsPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/dashboard" element={<ErrorBoundary><DashboardPage /></ErrorBoundary>} />
+
+            <Route path="/tickets/inbound" element={<ErrorBoundary><InboundTicketsPage /></ErrorBoundary>} />
+            <Route path="/tickets/inbound/new" element={<ErrorBoundary><InboundTicketWizard /></ErrorBoundary>} />
+            <Route path="/tickets/inbound/:id" element={<ErrorBoundary><InboundTicketWizard /></ErrorBoundary>} />
+
+            <Route path="/tickets/outbound" element={<ErrorBoundary><OutboundTicketsPage /></ErrorBoundary>} />
+            <Route path="/tickets/outbound/new" element={<ErrorBoundary><OutboundTicketWizard /></ErrorBoundary>} />
+            <Route path="/tickets/outbound/:id" element={<ErrorBoundary><OutboundTicketWizard /></ErrorBoundary>} />
+
+            <Route path="/inventory" element={<ErrorBoundary><InventoryPage /></ErrorBoundary>} />
+            <Route path="/materials" element={<ErrorBoundary><MaterialsPage /></ErrorBoundary>} />
+
+            <Route path="/suppliers" element={<ErrorBoundary><SuppliersPage /></ErrorBoundary>} />
+            <Route path="/suppliers/:id" element={<ErrorBoundary><SupplierDetailPage /></ErrorBoundary>} />
+
+            <Route path="/reports" element={<ErrorBoundary><ReportsPage /></ErrorBoundary>} />
+            <Route path="/portals" element={<ErrorBoundary><PortalsPage /></ErrorBoundary>} />
+            <Route path="/settings" element={<ErrorBoundary><SettingsPage /></ErrorBoundary>} />
+            <Route path="/audit" element={<ErrorBoundary><AuditPage /></ErrorBoundary>} />
           </Route>
         </Route>
 
-        {/* Fallback */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        {/* 404 */}
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </BrowserRouter>
   )

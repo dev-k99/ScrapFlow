@@ -5,31 +5,31 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary: {
-          DEFAULT: "#10B981", // Emerald
-          foreground: "#ffffff",
+        emerald: {
+          50:  "#ecfdf5",
+          100: "#d1fae5",
+          200: "#a7f3d0",
+          300: "#6ee7b7",
+          400: "#34d399",
+          500: "#10b981",
+          600: "#059669",
+          700: "#047857",
+          800: "#065f46",
+          900: "#064e3b",
         },
-        accent: {
-          DEFAULT: "#3B82F6", // Blue
-          foreground: "#ffffff",
-        },
-        background: "var(--background)",
-        foreground: "var(--foreground)",
-        card: {
-          DEFAULT: "var(--card)",
-          foreground: "var(--card-foreground)",
-        },
-        border: "var(--border)",
-      },
-      borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        brand: "#10B981",
       },
       fontFamily: {
-        sans: ["Inter", "system-ui", "sans-serif"],
+        sans:    ["DM Sans",      "system-ui", "sans-serif"],
+        display: ["Syne",         "system-ui", "sans-serif"],
+        mono:    ["JetBrains Mono","monospace"],
+      },
+      borderRadius: {
+        "2xl": "1rem",
+        "3xl": "1.5rem",
+        "4xl": "2rem",
       },
     },
   },
   plugins: [],
-};
+}
