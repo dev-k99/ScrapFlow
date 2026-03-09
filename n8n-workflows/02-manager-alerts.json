@@ -1,0 +1,146 @@
+{
+  "name": "ScrapFlow - Manager Alerts",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "scrapflow-manager-alerts",
+        "responseMode": "onReceived",
+        "responseData": "firstEntryJson"
+      },
+      "id": "2a2b3c4d-0001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [250, 300],
+      "webhookId": "scrapflow-manager-alerts"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.event }}",
+                    "rightValue": "inventory.lot.written_off",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "written_off"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.event }}",
+                    "rightValue": "inventory.lot.adjusted",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "adjusted"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.event }}",
+                    "rightValue": "supplier.registered",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "supplier_registered"
+            }
+          ]
+        }
+      },
+      "id": "2a2b3c4d-0002",
+      "name": "Route by Event",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "fromEmail": "kwanelerh069@gmail.com",
+        "toEmail": "kwanelerh069@gmail.com",
+        "subject": "=⚠️ ScrapFlow Write-Off Alert – {{ $json.data.lotNumber }}",
+        "emailType": "html",
+        "message": "=<h3>Inventory Write-Off Alert</h3><p><strong>Lot:</strong> {{ $json.data.lotNumber }}<br/><strong>Material:</strong> {{ $json.data.materialCode }}<br/><strong>Site:</strong> {{ $json.data.siteName }}<br/><strong>Quantity Written Off:</strong> {{ $json.data.quantity }} kg<br/><strong>Estimated Value:</strong> R {{ $json.data.estimatedValue }}<br/><strong>Reason:</strong> {{ $json.data.reason }}</p><p style='color:#9ca3af;font-size:12px'>ScrapFlow SA Automated Alert</p>",
+        "options": {}
+      },
+      "id": "2a2b3c4d-0003",
+      "name": "Email — Write-Off",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [650, 150],
+      "credentials": {
+        "smtp": { "id": "REPLACE_WITH_SMTP_CREDENTIAL_ID", "name": "SMTP" }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "kwanelerh069@gmail.com",
+        "toEmail": "kwanelerh069@gmail.com",
+        "subject": "=ScrapFlow Stock Adjustment – {{ $json.data.lotNumber }}",
+        "emailType": "html",
+        "message": "=<h3>Stock Adjustment</h3><p><strong>Lot:</strong> {{ $json.data.lotNumber }}<br/><strong>Material:</strong> {{ $json.data.materialCode }}<br/><strong>Site:</strong> {{ $json.data.siteName }}<br/><strong>Previous Qty:</strong> {{ $json.data.previousQuantity }} kg<br/><strong>New Qty:</strong> {{ $json.data.newQuantity }} kg<br/><strong>Delta:</strong> {{ $json.data.delta }} kg<br/><strong>Reason:</strong> {{ $json.data.reason }}</p>",
+        "options": {}
+      },
+      "id": "2a2b3c4d-0004",
+      "name": "Email — Adjustment",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [650, 300],
+      "credentials": {
+        "smtp": { "id": "REPLACE_WITH_SMTP_CREDENTIAL_ID", "name": "SMTP" }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "kwanelerh069@gmail.com",
+        "toEmail": "kwanelerh069@gmail.com",
+        "subject": "=New Supplier Registered – {{ $json.data.fullName }}",
+        "emailType": "html",
+        "message": "=<h3>New Supplier Registered</h3><p><strong>Name:</strong> {{ $json.data.fullName }}<br/><strong>ID Number:</strong> {{ $json.data.idNumber }}<br/><strong>Contact:</strong> {{ $json.data.contactNumber }}<br/><strong>ID Verified:</strong> {{ $json.data.isVerified ? 'Yes' : 'Pending verification' }}</p>",
+        "options": {}
+      },
+      "id": "2a2b3c4d-0005",
+      "name": "Email — New Supplier",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [650, 450],
+      "credentials": {
+        "smtp": { "id": "REPLACE_WITH_SMTP_CREDENTIAL_ID", "name": "SMTP" }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": { "main": [[{ "node": "Route by Event", "type": "main", "index": 0 }]] },
+    "Route by Event": {
+      "main": [
+        [{ "node": "Email — Write-Off",    "type": "main", "index": 0 }],
+        [{ "node": "Email — Adjustment",   "type": "main", "index": 0 }],
+        [{ "node": "Email — New Supplier", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "versionId": "02-manager-alerts-v1",
+  "meta": { "templateCredsSetupCompleted": false, "instanceId": "scrapflow" },
+  "tags": [{ "createdAt": "2026-03-04T00:00:00Z", "updatedAt": "2026-03-04T00:00:00Z", "id": "scrapflow-tag", "name": "ScrapFlow" }]
+}
