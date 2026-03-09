@@ -1,0 +1,30 @@
+# Build artifacts
+**/bin/
+**/obj/
+
+# Frontend
+scrapflow-client/node_modules/
+scrapflow-client/dist/
+scrapflow-client/.vite/
+
+# Test projects (not needed in the image)
+tests/
+
+# Secrets & local config
+.env
+src/ScrapFlow.API/appsettings.Development.json
+src/ScrapFlow.API/appsettings.json
+
+# Git / IDE
+.git/
+.vs/
+.vscode/
+*.user
+*.suo
+
+# Logs
+**/logs/
+*.log
+
+# Docs
+README.md

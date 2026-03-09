@@ -1,5 +1,11 @@
-# Secrets 
+# Secrets
 .env
+*.env
+appsettings.Development.json
+
+# Logs
+**/logs/
+*.log
 
 # .NET build artifacts
 **/bin/
