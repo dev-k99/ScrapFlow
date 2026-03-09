@@ -1,3 +1,5 @@
+using System.Net;
+using System.Net.Sockets;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -38,6 +40,10 @@ public class WebhooksController : ControllerBase
     {
         if (string.IsNullOrWhiteSpace(dto.Url))
             return BadRequest(new { message = "URL is required" });
+
+        var (isValid, urlError) = await ValidateWebhookUrlAsync(dto.Url);
+        if (!isValid)
+            return BadRequest(new { message = urlError });
 
         var sub = new WebhookSubscription
         {
@@ -90,6 +96,65 @@ public class WebhooksController : ControllerBase
         });
 
         return Ok(new { message = "Test payload sent" });
+    }
+
+    private static async Task<(bool isValid, string? error)> ValidateWebhookUrlAsync(string url)
+    {
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            return (false, "URL must be a valid absolute URI");
+
+        if (uri.Scheme != "https" && uri.Scheme != "http")
+            return (false, "URL must use HTTP or HTTPS");
+
+        var host = uri.Host;
+
+        // Block obvious localhost variants before DNS resolution
+        if (host.Equals("localhost", StringComparison.OrdinalIgnoreCase) ||
+            host == "127.0.0.1" || host == "::1" || host == "0.0.0.0")
+            return (false, "Localhost URLs are not allowed");
+
+        // Resolve hostname and check every returned IP
+        try
+        {
+            var addresses = await Dns.GetHostAddressesAsync(host);
+            foreach (var address in addresses)
+            {
+                if (IsPrivateIp(address))
+                    return (false, "URLs resolving to private or internal IP ranges are not allowed");
+            }
+        }
+        catch (SocketException)
+        {
+            return (false, "Unable to resolve hostname");
+        }
+
+        return (true, null);
+    }
+
+    private static bool IsPrivateIp(IPAddress address)
+    {
+        if (IPAddress.IsLoopback(address)) return true;
+
+        var bytes = address.GetAddressBytes();
+
+        // IPv4 private ranges
+        if (bytes.Length == 4)
+        {
+            return bytes[0] == 10 ||                                               // 10.0.0.0/8
+                   (bytes[0] == 172 && bytes[1] >= 16 && bytes[1] <= 31) ||       // 172.16.0.0/12
+                   (bytes[0] == 192 && bytes[1] == 168) ||                         // 192.168.0.0/16
+                   (bytes[0] == 169 && bytes[1] == 254) ||                         // 169.254.0.0/16 (cloud metadata)
+                   bytes[0] == 127;                                                // 127.0.0.0/8
+        }
+
+        // IPv6 private ranges
+        if (bytes.Length == 16)
+        {
+            return (bytes[0] == 0xfc || bytes[0] == 0xfd) ||                      // fc00::/7 (ULA)
+                   (bytes[0] == 0xfe && (bytes[1] & 0xc0) == 0x80);               // fe80::/10 (link-local)
+        }
+
+        return false;
     }
 
     private static WebhookSubscriptionDto Map(WebhookSubscription w) => new()
