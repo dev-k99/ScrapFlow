@@ -12,9 +12,15 @@ public class DashboardService : IDashboardService
 
     public DashboardService(ScrapFlowDbContext db) => _db = db;
 
-    public async Task<DashboardDto> GetDashboardAsync(Guid? siteId = null)
+    public async Task<DashboardDto> GetDashboardAsync(Guid? siteId = null, string? range = "7d")
     {
         var today = DateTime.UtcNow.Date;
+        var rangeStart = range switch
+        {
+            "today" => today,
+            "30d"   => today.AddDays(-30),
+            _       => today.AddDays(-7)
+        };
         var weekStart = today.AddDays(-7);
 
         var inboundQuery = _db.InboundTickets.AsQueryable();
@@ -43,44 +49,51 @@ public class DashboardService : IDashboardService
             SuppliersCount = await _db.Suppliers.CountAsync()
         };
 
-        // Daily tonnage for last 30 days
-        var thirtyDaysAgo = today.AddDays(-30);
-        var dailyData = await completedInbound
-            .Where(t => t.CompletedAt.HasValue && t.CompletedAt.Value.Date >= thirtyDaysAgo)
+        // Daily tonnage for selected range — project raw values in SQL, format in memory
+        var rawDaily = await completedInbound
+            .Where(t => t.CompletedAt.HasValue && t.CompletedAt.Value.Date >= rangeStart)
             .GroupBy(t => t.CompletedAt!.Value.Date)
-            .Select(g => new DailyTonnageDto(
-                g.Key.ToString("yyyy-MM-dd"),
-                Math.Round(g.Sum(t => t.NetWeight ?? 0) / 1000, 2),
-                0
-            ))
+            .Select(g => new { Date = g.Key, RawTonnageIn = g.Sum(t => t.NetWeight ?? 0) })
             .OrderBy(d => d.Date)
             .ToListAsync();
-        dto.DailyTonnage = dailyData;
+        dto.DailyTonnage = rawDaily
+            .Select(d => new DailyTonnageDto(d.Date.ToString("yyyy-MM-dd"), Math.Round(d.RawTonnageIn / 1000m, 2), 0))
+            .ToList();
 
         // Inventory by grade
-        dto.InventoryByGrade = await inventoryQuery
+        var rawInventory = await inventoryQuery
             .Where(l => l.Status == LotStatus.InStock)
             .GroupBy(l => new { l.MaterialGrade.Code, l.MaterialGrade.Name, Category = l.MaterialGrade.Category.Name })
-            .Select(g => new InventoryByGradeDto(
+            .Select(g => new {
                 g.Key.Code, g.Key.Name, g.Key.Category,
-                Math.Round(g.Sum(l => l.Quantity) / 1000, 2),
-                Math.Round(g.Sum(l => l.Quantity / 1000 * l.WeightedAvgCost), 2)
-            ))
-            .OrderByDescending(i => i.Value)
+                RawWeight = g.Sum(l => l.Quantity),
+                RawValue  = g.Sum(l => l.Quantity / 1000m * l.WeightedAvgCost)
+            })
+            .OrderByDescending(i => i.RawValue)
             .ToListAsync();
+        dto.InventoryByGrade = rawInventory
+            .Select(i => new InventoryByGradeDto(i.Code, i.Name, i.Category,
+                Math.Round(i.RawWeight / 1000m, 2), Math.Round(i.RawValue, 2)))
+            .ToList();
 
         // Top 10 suppliers
-        dto.TopSuppliers = await completedInbound
+        var rawSuppliers = await completedInbound
             .GroupBy(t => t.Supplier.FullName)
-            .Select(g => new TopSupplierDto(
-                g.Key,
-                Math.Round(g.Sum(t => t.NetWeight ?? 0) / 1000, 2),
-                Math.Round(g.Sum(t => t.TotalPrice), 2),
-                g.Count()
-            ))
-            .OrderByDescending(s => s.TotalValue)
+            .Select(g => new {
+                Name        = g.Key,
+                RawWeight   = g.Sum(t => t.NetWeight ?? 0),
+                RawValue    = g.Sum(t => t.TotalPrice),
+                TicketCount = g.Count()
+            })
+            .OrderByDescending(s => s.RawValue)
             .Take(10)
             .ToListAsync();
+        dto.TopSuppliers = rawSuppliers
+            .Select(s => new TopSupplierDto(s.Name,
+                Math.Round(s.RawWeight / 1000m, 2),
+                Math.Round(s.RawValue, 2),
+                s.TicketCount))
+            .ToList();
 
         // Margins by grade
         var todayPrices = await _db.DailyPrices
@@ -103,18 +116,24 @@ public class DashboardService : IDashboardService
             dto.OverallMarginPercent = totalSell > 0 ? Math.Round((totalSell - totalBuy) / totalSell * 100, 2) : 0;
         }
 
-        // Recent activity
-        var recentTickets = await inboundQuery
+        // Recent activity — project raw values in SQL, format in memory
+        var rawActivity = await inboundQuery
             .OrderByDescending(t => t.CreatedAt)
             .Take(10)
+            .Select(t => new {
+                t.TicketNumber,
+                SupplierName = t.Supplier.FullName,
+                t.Status,
+                t.CreatedAt
+            })
+            .ToListAsync();
+        dto.RecentActivity = rawActivity
             .Select(t => new RecentActivityDto(
                 "Inbound",
-                $"Ticket {t.TicketNumber} – {t.Supplier.FullName} – {t.Status}",
+                $"Ticket {t.TicketNumber} – {t.SupplierName} – {t.Status}",
                 t.CreatedAt.ToString("HH:mm"),
-                null
-            ))
-            .ToListAsync();
-        dto.RecentActivity = recentTickets;
+                null))
+            .ToList();
 
         return dto;
     }

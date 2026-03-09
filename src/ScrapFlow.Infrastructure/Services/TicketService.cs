@@ -12,12 +12,14 @@ public class TicketService : ITicketService
     private readonly ScrapFlowDbContext _db;
     private readonly QrCodeService _qrCodeService;
     private readonly NotificationService _notificationService;
+    private readonly IWebhookService _webhookService;
 
-    public TicketService(ScrapFlowDbContext db, QrCodeService qrCodeService, NotificationService notificationService)
+    public TicketService(ScrapFlowDbContext db, QrCodeService qrCodeService, NotificationService notificationService, IWebhookService webhookService)
     {
         _db = db;
         _qrCodeService = qrCodeService;
         _notificationService = notificationService;
+        _webhookService = webhookService;
     }
 
     public async Task<InboundTicketResponseDto> CreateInboundTicketAsync(CreateInboundTicketDto dto, string userId)
@@ -242,6 +244,31 @@ public class TicketService : ITicketService
         }
 
         await _db.SaveChangesAsync();
+
+        // Fire webhook (fire-and-forget — never blocks the response)
+        var completedTicket = ticket;
+        _ = Task.Run(() => _webhookService.FireAsync("ticket.inbound.completed", new
+        {
+            ticketNumber = completedTicket.TicketNumber,
+            siteName = completedTicket.Site?.Name ?? "",
+            supplier = new
+            {
+                fullName = completedTicket.Supplier?.FullName ?? "",
+                contactNumber = completedTicket.Supplier?.ContactNumber ?? "",
+                email = (string?)null
+            },
+            lineItems = completedTicket.LineItems.Select(li => new
+            {
+                materialCode = li.MaterialGrade?.Code ?? "",
+                netWeight = li.NetWeight,
+                lineTotal = li.LineTotal
+            }),
+            netWeight = completedTicket.NetWeight,
+            totalPrice = completedTicket.TotalPrice,
+            paymentReference = completedTicket.PaymentReference,
+            isFullyCompliant = completedTicket.ComplianceRecord?.IsFullyCompliant ?? false
+        }));
+
         return await GetTicketAsync(ticketId) ?? throw new Exception("Ticket not found");
     }
 
