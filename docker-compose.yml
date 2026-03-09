@@ -1,0 +1,43 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: scrapflow-api
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Host=aws-1-eu-west-1.pooler.supabase.com;Port=5432;Database=postgres;Username=postgres.mcstvdywdavuxwdqsyqm;Password=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required};SSL Mode=Require;
+      - Jwt__Key=${JWT_KEY:?JWT_KEY is required}
+      - Jwt__Issuer=${JWT_ISSUER:-ScrapFlowSA}
+      - Jwt__Audience=${JWT_AUDIENCE:-ScrapFlowSA}
+    ports:
+      - "5000:8080"
+    restart: unless-stopped
+    networks:
+      - public
+
+  n8n:
+    image: n8nio/n8n:1.85.4
+    container_name: scrapflow-n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD:?N8N_PASSWORD is required}
+      - GENERIC_TIMEZONE=Africa/Johannesburg
+      - TZ=Africa/Johannesburg
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./n8n-workflows:/home/node/workflows:ro
+    networks:
+      - public
+
+networks:
+  public:
+    driver: bridge
+
+volumes:
+  n8n_data:
