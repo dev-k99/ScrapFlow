@@ -1,0 +1,80 @@
+{
+  "name": "ScrapFlow - Supplier Payment Receipt",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "scrapflow-inbound-completed",
+        "responseMode": "onReceived",
+        "responseData": "firstEntryJson"
+      },
+      "id": "1a2b3c4d-0001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [250, 300],
+      "webhookId": "scrapflow-inbound-completed"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "event-check",
+              "leftValue": "={{ $json.event }}",
+              "rightValue": "ticket.inbound.completed",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "1a2b3c4d-0002",
+      "name": "Is Inbound Completed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "fromEmail": "kwanelerh069@gmail.com",
+        "toEmail": "={{ $json.data.supplier.email ?? 'kwanelerh069@gmail.com' }}",
+        "subject": "=ScrapFlow Payment Receipt – {{ $json.data.ticketNumber }}",
+        "emailType": "html",
+        "message": "=<!DOCTYPE html><html><body style='font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px'><h2 style='color:#1a56db'>ScrapFlow SA — Payment Receipt</h2><table width='100%' style='border-collapse:collapse;margin-bottom:20px'><tr style='background:#f3f4f6'><td style='padding:8px 12px;font-weight:bold'>Ticket Number</td><td style='padding:8px 12px'>{{ $json.data.ticketNumber }}</td></tr><tr><td style='padding:8px 12px;font-weight:bold'>Site</td><td style='padding:8px 12px'>{{ $json.data.siteName }}</td></tr><tr style='background:#f3f4f6'><td style='padding:8px 12px;font-weight:bold'>Supplier</td><td style='padding:8px 12px'>{{ $json.data.supplier.fullName }}</td></tr><tr><td style='padding:8px 12px;font-weight:bold'>Contact</td><td style='padding:8px 12px'>{{ $json.data.supplier.contactNumber }}</td></tr><tr style='background:#f3f4f6'><td style='padding:8px 12px;font-weight:bold'>EFT Reference</td><td style='padding:8px 12px'>{{ $json.data.paymentReference }}</td></tr><tr><td style='padding:8px 12px;font-weight:bold'>Net Weight</td><td style='padding:8px 12px'>{{ $json.data.netWeight }} kg</td></tr><tr style='background:#f3f4f6'><td style='padding:8px 12px;font-weight:bold'>Total Payment</td><td style='padding:8px 12px;font-size:18px;font-weight:bold;color:#059669'>R {{ $json.data.totalPrice }}</td></tr></table><h3>Materials Purchased</h3><table width='100%' style='border-collapse:collapse'><thead><tr style='background:#1a56db;color:white'><th style='padding:8px 12px;text-align:left'>Material</th><th style='padding:8px 12px;text-align:right'>Net Weight (kg)</th><th style='padding:8px 12px;text-align:right'>Line Total (R)</th></tr></thead><tbody>{{ $json.data.lineItems.map((li, i) => `<tr style='background:${i%2===0?'#f9fafb':'white'}'><td style='padding:8px 12px'>${li.materialCode}</td><td style='padding:8px 12px;text-align:right'>${li.netWeight}</td><td style='padding:8px 12px;text-align:right'>${li.lineTotal}</td></tr>`).join('') }}</tbody></table><br/><p style='color:#6b7280;font-size:12px'>This is an automated receipt from ScrapFlow SA. All payments are processed via EFT in compliance with the Second-Hand Goods Act.</p></body></html>",
+        "options": {}
+      },
+      "id": "1a2b3c4d-0003",
+      "name": "Send Receipt Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [650, 200],
+      "credentials": {
+        "smtp": { "id": "REPLACE_WITH_SMTP_CREDENTIAL_ID", "name": "SMTP" }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "1a2b3c4d-0004",
+      "name": "No Action",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [650, 400]
+    }
+  ],
+  "connections": {
+    "Webhook": { "main": [[{ "node": "Is Inbound Completed?", "type": "main", "index": 0 }]] },
+    "Is Inbound Completed?": {
+      "main": [
+        [{ "node": "Send Receipt Email", "type": "main", "index": 0 }],
+        [{ "node": "No Action", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "versionId": "01-supplier-payment-receipt-v1",
+  "meta": { "templateCredsSetupCompleted": false, "instanceId": "scrapflow" },
+  "tags": [{ "createdAt": "2026-03-04T00:00:00Z", "updatedAt": "2026-03-04T00:00:00Z", "id": "scrapflow-tag", "name": "ScrapFlow" }]
+}
