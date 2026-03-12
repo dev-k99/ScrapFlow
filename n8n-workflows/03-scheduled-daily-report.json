@@ -21,7 +21,7 @@
     },
     {
       "parameters": {
-        "url": "http://host.docker.internal:5010/api/dashboard",
+        "url": "https://scrapflow-api.onrender.com/api/dashboard",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendHeaders": true,

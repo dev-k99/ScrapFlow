@@ -3,29 +3,38 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { X } from 'lucide-react'
 
 export default function Modal({ open, onOpenChange, title, description, children, size = 'md' }) {
-  const widths = { sm: 'max-w-sm', md: 'max-w-lg', lg: 'max-w-2xl', xl: 'max-w-4xl' }
+  const widths = { sm: '28rem', md: '32rem', lg: '42rem', xl: '56rem' }
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <AnimatePresence>
         {open && (
           <Dialog.Portal forceMount>
-            {/* Overlay doubles as the scroll container */}
+            {/* Dimmed backdrop */}
             <Dialog.Overlay asChild>
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                style={{ overflowY: 'auto' }}
-                className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-start justify-center p-4 py-8"
-              >
+                className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
+              />
+            </Dialog.Overlay>
+
+            {/* Scroll container — sits above backdrop */}
+            <div
+              className="fixed inset-0 z-50 overflow-y-auto"
+              onClick={(e) => { if (e.target === e.currentTarget) onOpenChange(false) }}
+            >
+              {/* Centering wrapper */}
+              <div className="flex min-h-full items-center justify-center p-4">
                 <Dialog.Content asChild>
                   <motion.div
                     initial={{ opacity: 0, scale: 0.96, y: 12 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.96, y: 12 }}
                     transition={{ duration: 0.2, ease: 'easeOut' }}
-                    className={`relative w-full ${widths[size] ?? widths.md} glass-card p-6 outline-none my-auto`}
+                    className="relative w-full glass-card p-6 outline-none"
+                    style={{ maxWidth: widths[size] ?? widths.md }}
                   >
                     {/* Header */}
                     {(title || description) && (
@@ -43,7 +52,7 @@ export default function Modal({ open, onOpenChange, title, description, children
                       </div>
                     )}
 
-                    {/* Close */}
+                    {/* Close button */}
                     <Dialog.Close asChild>
                       <button className="absolute top-4 right-4 w-7 h-7 flex items-center justify-center
                                          rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text)]
@@ -55,8 +64,8 @@ export default function Modal({ open, onOpenChange, title, description, children
                     {children}
                   </motion.div>
                 </Dialog.Content>
-              </motion.div>
-            </Dialog.Overlay>
+              </div>
+            </div>
           </Dialog.Portal>
         )}
       </AnimatePresence>
