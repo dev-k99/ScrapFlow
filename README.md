@@ -220,7 +220,6 @@ On first run, the API automatically seeds:
 | Audit Log | GET | `/api/auditlogs` | Manager+ |
 | Health | GET | `/health` | Public |
 
-> Full interactive docs: **https://scrapflow-api.onrender.com/swagger**
 
 ---
 
