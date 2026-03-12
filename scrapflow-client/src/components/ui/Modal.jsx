@@ -33,26 +33,28 @@ export default function Modal({ open, onOpenChange, title, description, children
                 animate={{ opacity: 1, scale: 1,    y: 0 }}
                 exit={{    opacity: 0, scale: 0.96, y: 12 }}
                 transition={{ duration: 0.2, ease: 'easeOut' }}
-                style={{ maxHeight: '90vh', overflowY: 'auto' }}
                 className={`fixed z-50 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2
                             w-full ${widths[size] ?? widths.md} mx-4
-                            glass-card p-6 outline-none`}
+                            glass-card outline-none flex flex-col`}
+                style={{ maxHeight: '90vh' }}
               >
                 {/* Header */}
-                {(title || description) && (
-                  <div className="mb-5">
-                    {title && (
-                      <Dialog.Title className="text-lg font-bold text-[var(--color-text)] leading-tight">
-                        {title}
-                      </Dialog.Title>
-                    )}
-                    {description && (
-                      <Dialog.Description className="text-sm text-[var(--color-text-muted)] mt-1">
-                        {description}
-                      </Dialog.Description>
-                    )}
-                  </div>
-                )}
+                <div className="flex-shrink-0 px-6 pt-6 pb-0">
+                  {(title || description) && (
+                    <div className="mb-5 pr-8">
+                      {title && (
+                        <Dialog.Title className="text-lg font-bold text-[var(--color-text)] leading-tight">
+                          {title}
+                        </Dialog.Title>
+                      )}
+                      {description && (
+                        <Dialog.Description className="text-sm text-[var(--color-text-muted)] mt-1">
+                          {description}
+                        </Dialog.Description>
+                      )}
+                    </div>
+                  )}
+                </div>
 
                 {/* Close */}
                 <Dialog.Close asChild>
@@ -63,7 +65,10 @@ export default function Modal({ open, onOpenChange, title, description, children
                   </button>
                 </Dialog.Close>
 
-                {children}
+                {/* Scrollable content */}
+                <div className="flex-1 overflow-y-auto px-6 pb-6">
+                  {children}
+                </div>
               </motion.div>
             </Dialog.Content>
           </Dialog.Portal>
