@@ -35,7 +35,8 @@ export default function Modal({ open, onOpenChange, title, description, children
                 transition={{ duration: 0.2, ease: 'easeOut' }}
                 className={`fixed z-50 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2
                             w-full ${widths[size] ?? widths.md} mx-4
-                            glass-card p-6 outline-none`}
+                            glass-card p-6 outline-none
+                            max-h-[90vh] overflow-y-auto`}
               >
                 {/* Header */}
                 {(title || description) && (
